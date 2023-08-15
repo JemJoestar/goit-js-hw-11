@@ -1,8 +1,7 @@
 import { Notify } from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
-import ApiService from './photoAPI/photo-api-service.js';
-import axios from 'axios';
+import {searchPhotos} from './photoAPI/photo-api-service.js';
 
 const refs = {
   formEl: document.getElementById('search-form'),
@@ -10,50 +9,49 @@ const refs = {
   loadMoreZone: document.getElementById('load-more'),
 };
 
+let request = ""
+
+let observerTriggered = false;
+
+let reachedEnd = false
+
 const observer = new IntersectionObserver(event => {
+  if (observerTriggered) {
+    return;
+  }
+  if(reachedEnd){
+    refs.loadMoreZone.hidden = true;
+    observerTriggered = true
+    Notify.info("We're sorry, but you've reached the end of search results.");
+    return
+  }
+
+  observerTriggered = true;
   loadPhotos().catch(err => err);
 });
 
-const apiService = new ApiService();
-
 const lightbox = new SimpleLightbox('.photo-card a');
 
-// !============================================
 
-// !============================================
 
 refs.formEl.addEventListener('submit', onSearch);
 
 function onSearch(event) {
   event.preventDefault();
+  reachedEnd = false
+
   if (event.currentTarget.searchQuery.value === '') {
     Notify.failure('Please enter your request');
     return;
   }
-  apiService.request = event.currentTarget.searchQuery.value;
+  request = event.currentTarget.searchQuery.value;
   refs.galleryEl.innerHTML = '';
-  //   axios({
-  //     url: 'https://pixabay.com/api/',
-  //     params: {
-  //       key: '38816166-f921759e60a0931b2b81a2c9d',
-  //       q: apiService.request,
-  //     },
-  //   })
-  //     .then(response => response.data.totalHits)
-  //     .then(totalHits => {
-  //       if (totalHits === 0) {
-  //         throw new Error('Sorry, there are no images matching your search query. Please try again.');
-  //       }
-  //       Notify.success(`Hooray! We found ${totalHits} images.`);
-  //     })
-  //     .catch(err => {
-  //       Notify.failure(
-  //         err.message
-  //       );
-  //       refs.loadMoreZone.hidden = true
-  //     });
+  refs.formEl.reset();
 
-  loadPhotos().catch(err => Notify.failure(err.message));
+
+  page = 1;
+
+  loadPhotos();
   refs.loadMoreZone.hidden = false;
   observer.observe(refs.loadMoreZone);
 }
@@ -83,25 +81,38 @@ function createMarcup(photoArr) {
 }
 
 async function loadPhotos() {
-  const loadetData = await apiService
-    .searchPhotos()
-    .catch(err => Notify.failure(err.message));
+  try {
+    observerTriggered = true;
 
-  if (loadetData.totalHits === 0) {
-    throw new Error(
-      'Sorry, there are no images matching your search query. Please try again.'
-      );
+    const loadetData = await searchPhotos(request, page++);
+    try {
+      if (loadetData.totalHits === 0) {
+        throw new Error(
+          'Sorry, there are no images matching your search query. Please try again.'
+        );
+      }
+    } catch (err) {
+      Notify.failure(err.message);
       return
-  }
-  if (loadetData.hits.length < 40) {
-    refs.loadMoreZone.hidden = true;
-    Notify.info("We're sorry, but you've reached the end of search results.");
-  }
+    }
 
-  refs.galleryEl.insertAdjacentHTML('beforeend', createMarcup(loadetData.hits));
-  console.log(`loadetData.hits:`, loadetData.hits);
-  refs.formEl.reset();
+    if (loadetData.hits.length < 40) {
+      reachedEnd = true      
+    }
 
-  lightbox.refresh();
-  console.log('asdf');
+    refs.galleryEl.insertAdjacentHTML(
+      'beforeend',
+      createMarcup(loadetData.hits)
+    );
+// !=======DELETE========
+    refs.formEl.reset();
+// !=======DELETE========
+
+    setTimeout(() => (observerTriggered = false), 1000);
+    lightbox.refresh();
+
+  } catch (err) {
+    throw err
+    // Notify.failure(err.message);
+  }
 }

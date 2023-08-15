@@ -1,5 +1,23 @@
-import axios from "axios";
+import axios from 'axios';
 
+const BASE_URL = 'https://pixabay.com/api/';
+const API_KEY = '38816166-f921759e60a0931b2b81a2c9d';
+
+export async function searchPhotos(request, page) {
+  const response = await axios({
+    url: BASE_URL,
+    params: {
+      key: API_KEY,
+      q: request,
+      per_page: 40,
+      page: page,
+      orientation: 'horizontal',
+    },
+  });
+  return response.data
+}
+
+/*
 
 export default class ApiService {
   #BASE_URL = 'https://pixabay.com/api/';
@@ -28,3 +46,4 @@ export default class ApiService {
     this.page = 1
   }
 }
+*/
