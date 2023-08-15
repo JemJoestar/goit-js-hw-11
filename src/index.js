@@ -1,7 +1,7 @@
 import { Notify } from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
-import {searchPhotos} from './photoAPI/photo-api-service.js';
+import { searchPhotos } from './photoAPI/photo-api-service.js';
 
 const refs = {
   formEl: document.getElementById('search-form'),
@@ -9,21 +9,23 @@ const refs = {
   loadMoreZone: document.getElementById('load-more'),
 };
 
-let request = ""
+let request = '';
+
+let page = 1;
 
 let observerTriggered = false;
 
-let reachedEnd = false
+let reachedEnd = false;
 
 const observer = new IntersectionObserver(event => {
   if (observerTriggered) {
     return;
   }
-  if(reachedEnd){
+  if (reachedEnd) {
     refs.loadMoreZone.hidden = true;
-    observerTriggered = true
+    observerTriggered = true;
     Notify.info("We're sorry, but you've reached the end of search results.");
-    return
+    return;
   }
 
   observerTriggered = true;
@@ -32,13 +34,11 @@ const observer = new IntersectionObserver(event => {
 
 const lightbox = new SimpleLightbox('.photo-card a');
 
-
-
 refs.formEl.addEventListener('submit', onSearch);
 
 function onSearch(event) {
   event.preventDefault();
-  reachedEnd = false
+  reachedEnd = false;
 
   if (event.currentTarget.searchQuery.value === '') {
     Notify.failure('Please enter your request');
@@ -47,7 +47,6 @@ function onSearch(event) {
   request = event.currentTarget.searchQuery.value;
   refs.galleryEl.innerHTML = '';
   refs.formEl.reset();
-
 
   page = 1;
 
@@ -93,26 +92,25 @@ async function loadPhotos() {
       }
     } catch (err) {
       Notify.failure(err.message);
-      return
+      return;
     }
 
     if (loadetData.hits.length < 40) {
-      reachedEnd = true      
+      reachedEnd = true;
     }
 
     refs.galleryEl.insertAdjacentHTML(
       'beforeend',
       createMarcup(loadetData.hits)
     );
-// !=======DELETE========
+    // !=======DELETE========
     refs.formEl.reset();
-// !=======DELETE========
+    // !=======DELETE========
 
     setTimeout(() => (observerTriggered = false), 1000);
     lightbox.refresh();
-
   } catch (err) {
-    throw err
+    throw err;
     // Notify.failure(err.message);
   }
 }
